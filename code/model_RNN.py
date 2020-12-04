@@ -59,111 +59,113 @@ class Model(tf.keras.Model):
         
         return tf.reduce_mean(l)
     
-    def train (model, train_inputs, train_labels):
-        """
-        Runs through one epoch - all training examples.
-        
-        :param model: the initilized model to use for forward and backward pass
-        :param train_inputs: train inputs (all inputs for training) of shape (num_inputs,)
-        :param train_labels: train labels (all labels for training) of shape (num_labels,)
-        :return: None
-        """
-        # TODO: Fill in
-        print("Train starts")
-        batchSize = model.batch_size
-        windowSize = model.window_size
-        optimizer = model.optimizer
-        
-        length = len(train_inputs)
-        times = int(length / windowSize)
-        
-        trainInputSliced = train_inputs[0: times * windowSize]
-        trainLabelsSliced = train_labels[0: times * windowSize]
-        
-        trainInputReshaped = trainInputSliced.reshape(times, windowSize)
-        trainLabelsReshaped = trainLabelsSliced.reshape(times, windowSize)
-        
-        lossArray = []
-        EW = []
-        LSTMLayerW = []
-        dense1W = []
-        dense2W = []
-        totalLoss = 0
-        for i in range(0, len(trainInputReshaped), batchSize):
-            batchedInput = trainInputReshaped[i: i + batchSize, :]
-            batchedLabel = trainLabelsReshaped[i: i + batchSize, :]
-            with tf.GradientTape() as tape:
-                pred = model.call(batchedInput, None)
-                loss = model.loss(pred, batchedLabel)
-            totalLoss = totalLoss + loss
-            lossArray.append(totalLoss / (i + 1))
-            EW.append(model.E.get_weights())
-            LSTMLayerW.append(model.LSTMLayer.get_weights())
-            dense1W.append(model.denseLayer1.get_weights())
-            dense2W.append(model.denseLayer2.get_weights())
-            
-            gradients = tape.gradient(loss, model.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-        
-        print("Train ends")
-        
-        return lossArray, EW, LSTMLayerW, dense1W, dense2W
     
-    def generate_node (word1, length, vocab, model, sample_n=10):
-        
-        reverse_vocab = {idx: word for word, idx in vocab.items()}
-        previous_state = None
-        
-        first_string = word1
-        first_word_index = vocab[word1]
-        next_input = [[first_word_index]]
-        text = [first_string]
-        
-        for i in range(length):
-            logits, previous_state = model.call(next_input, previous_state)
-            logits = np.array(logits[0, 0, :])
-            top_n = np.argsort(logits)[-sample_n:]
-            n_logits = np.exp(logits[top_n]) / np.exp(logits[top_n]).sum()
-            out_index = np.random.choice(top_n, p=n_logits)
-            
-            text.append(reverse_vocab[out_index])
-            next_input = [[out_index]]
-        
-        return text
+def train (model, train_inputs, train_labels):
+    """
+    Runs through one epoch - all training examples.
     
-    def main ():
-        # TO-DO: Pre-process and vectorize the data
-        # HINT: Please note that you are predicting the next word at each timestep, so you want to remove the last element
-        # from train_x and test_x. You also need to drop the first element from train_y and test_y.
-        # If you don't do this, you will see impossibly small perplexities.
-        
-        # TO-DO:  Separate your train and test data into inputs and labels
-        print("Main starts")
-        trainOut, notes_dict = get_data()
-        
-        trainInputs = np.array(trainOut[:-1])
-        trainLabels = np.array(trainOut[1:])
-        
-        # TODO: initialize model and tensorflow variables
-        # vocab_size, window_size, embedding_size, batch_size, rnn_size, hidden_layer
-        window_size = ?
-        embedding_size = ?
-        batch_size = ?
-        rnn_size = ?
-        hidden_layer = ?
-        model = Model(len(notes_dict), window_size, embedding_size, batch_size, rnn_size, hidden_layer)
-        
-        # TODO: Set-up the training step
-        lossArray, EW, LSTMLayerW, dense1W, dense2W = train(model, trainInputs, trainLabels)
-        indexOfMin = np.argmin(lossArray)
-        model.E.set_weights(EW[indexOfMin])
-        model.LSTMLayer.set_weights(LSTMLayerW[indexOfMin])
-        model.denseLayer1.set_weights(dense1W[indexOfMin])
-        model.denseLayer2.set_weights(dense2W[indexOfMin])
-        
-        firstNode = ?
-        length = ?
-        text = generate_node(word1, length, notes_dict, model, sample_n=10)
+    :param model: the initilized model to use for forward and backward pass
+    :param train_inputs: train inputs (all inputs for training) of shape (num_inputs,)
+    :param train_labels: train labels (all labels for training) of shape (num_labels,)
+    :return: None
+    """
+    # TODO: Fill in
+    print("Train starts")
+    batchSize = model.batch_size
+    windowSize = model.window_size
+    optimizer = model.optimizer
     
-    if __name__ == '__main__':
-        main()
+    length = len(train_inputs)
+    times = int(length / windowSize)
+    
+    trainInputSliced = train_inputs[0: times * windowSize]
+    trainLabelsSliced = train_labels[0: times * windowSize]
+    
+    trainInputReshaped = trainInputSliced.reshape(times, windowSize)
+    trainLabelsReshaped = trainLabelsSliced.reshape(times, windowSize)
+    
+    lossArray = []
+    EW = []
+    LSTMLayerW = []
+    dense1W = []
+    dense2W = []
+    totalLoss = 0
+    for i in range(0, len(trainInputReshaped), batchSize):
+        batchedInput = trainInputReshaped[i: i + batchSize, :]
+        batchedLabel = trainLabelsReshaped[i: i + batchSize, :]
+        with tf.GradientTape() as tape:
+            pred = model.call(batchedInput, None)
+            loss = model.loss(pred, batchedLabel)
+        totalLoss = totalLoss + loss
+        lossArray.append(totalLoss / (i + 1))
+        EW.append(model.E.get_weights())
+        LSTMLayerW.append(model.LSTMLayer.get_weights())
+        dense1W.append(model.denseLayer1.get_weights())
+        dense2W.append(model.denseLayer2.get_weights())
+        
+        gradients = tape.gradient(loss, model.trainable_variables)
+        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+        
+    print("Train ends")
+        
+    return lossArray, EW, LSTMLayerW, dense1W, dense2W
+    
+def generate_node (word1, length, vocab, model, sample_n=10):
+        
+    reverse_vocab = {idx: word for word, idx in vocab.items()}
+    previous_state = None
+        
+    first_string = word1
+    first_word_index = vocab[word1]
+    next_input = [[first_word_index]]
+    text = [first_string]
+        
+    for i in range(length):
+        logits, previous_state = model.call(next_input, previous_state)
+        logits = np.array(logits[0, 0, :])
+        top_n = np.argsort(logits)[-sample_n:]
+        n_logits = np.exp(logits[top_n]) / np.exp(logits[top_n]).sum()
+        out_index = np.random.choice(top_n, p=n_logits)
+        
+        text.append(reverse_vocab[out_index])
+        next_input = [[out_index]]
+        
+    return text
+   
+ 
+def main ():
+    # TO-DO: Pre-process and vectorize the data
+    # HINT: Please note that you are predicting the next word at each timestep, so you want to remove the last element
+    # from train_x and test_x. You also need to drop the first element from train_y and test_y.
+    # If you don't do this, you will see impossibly small perplexities.
+    
+    # TO-DO:  Separate your train and test data into inputs and labels
+    print("Main starts")
+    trainOut, test_data, notes_dict = get_data()
+    
+    trainInputs = np.array(trainOut[:-1])
+    trainLabels = np.array(trainOut[1:])
+        
+    # TODO: initialize model and tensorflow variables
+    # vocab_size, window_size, embedding_size, batch_size, rnn_size, hidden_layer
+    window_size = 20
+    embedding_size = 256
+    batch_size = 128
+    rnn_size = 512
+    hidden_layer = 512
+    model = Model(len(notes_dict), window_size, embedding_size, batch_size, rnn_size, hidden_layer)
+    
+    # TODO: Set-up the training step
+    lossArray, EW, LSTMLayerW, dense1W, dense2W = train(model, trainInputs, trainLabels)
+    # indexOfMin = np.argmin(lossArray)
+    # model.E.set_weights(EW[indexOfMin])
+    # model.LSTMLayer.set_weights(LSTMLayerW[indexOfMin])
+    # model.denseLayer1.set_weights(dense1W[indexOfMin])
+    # model.denseLayer2.set_weights(dense2W[indexOfMin])
+    
+    # firstNode = ?
+    # length = ?
+    # text = generate_node(word1, length, notes_dict, model, sample_n=10)
+    
+if __name__ == '__main__':
+    main()
