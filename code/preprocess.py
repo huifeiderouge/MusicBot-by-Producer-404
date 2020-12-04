@@ -42,6 +42,7 @@ def get_data():
     :return: Tuple of train (1-d list with training notes in id form), 
              vocabulary (dict containg note->index mapping)
     """
+    test_fraction = 0.1
     notes = get_notes()
     
     # mapping notes to ids
@@ -49,8 +50,15 @@ def get_data():
     notes_dict = {note: i for i, note in enumerate(all_notes)}
     
     # process train data according to notes_dict
-    train = []
+    data = []
     for note in notes:
-        train.append(notes_dict[note])
+        data.append(notes_dict[note])
     
-    return train, notes_dict
+    test_len = int(len(data) * test_fraction)
+    train_data = data[:-test_len]
+    test_data = data[-test_len:]
+    print(len(data))
+    print(len(train_data))
+    print(len(test_data))
+    
+    return train_data, test_data, notes_dict
