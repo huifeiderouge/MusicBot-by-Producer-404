@@ -43,6 +43,7 @@ def get_data():
              vocabulary (dict containg note->index mapping)
     """
     test_fraction = 0.1
+    window_size = 20
     notes = get_notes()
     
     # mapping notes to ids
@@ -57,8 +58,16 @@ def get_data():
     test_len = int(len(data) * test_fraction)
     train_data = data[:-test_len]
     test_data = data[-test_len:]
-    print(len(data))
-    print(len(train_data))
-    print(len(test_data))
     
-    return train_data, test_data, notes_dict
+    train_windows = int((len(train_data)-1)/window_size)
+    train_inputs = np.reshape(data[:train_windows*window_size], (-1,window_size))
+    train_labels = np.reshape(data[1:train_windows*window_size+1], (-1,window_size))
+    
+    test_windows = int((len(test_data)-1)/window_size)
+    test_inputs = np.reshape(data[:test_windows*window_size], (-1,window_size))
+    test_labels = np.reshape(data[1:test_windows*window_size+1], (-1,window_size))
+    # print(len(data))
+    # print(len(train_data))
+    # print(len(test_data))
+    
+    return train_inputs, train_labels, test_inputs, test_labels, notes_dict
