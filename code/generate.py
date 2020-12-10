@@ -8,7 +8,7 @@ from music21 import instrument, note, stream, chord, converter
 
 
 def generate(notes_dict):
-    model = tf.keras.models.load_model("../../MusicBot-by-Producer-404/code/my_weights.h5")
+    model = tf.keras.models.load_model("../../MusicBot-by-Producer-404/code/my_model_100.h5")
     predictions = predict(model, notes_dict, 10)
     notes = prepare_sequence(predictions, notes_dict)
     create_midi(notes)

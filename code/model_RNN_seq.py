@@ -40,7 +40,7 @@ def train(model, inputs, lables, n_epoch):
     print("Training finished")
     
     # save weights for generate midi
-    model.save("../../MusicBot-by-Producer-404/code/my_model.h5")
+    model.save("../../MusicBot-by-Producer-404/code/my_model_"+str(n_epoch)+".h5")
 
 
 def test(model, inputs, lables):
