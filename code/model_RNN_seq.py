@@ -4,50 +4,59 @@ from tensorflow.keras import Model
 from tensorflow.keras import layers
 from tensorflow.keras import optimizers
 from preprocess import get_data
+from music21 import instrument, note, stream, chord
 
-def build_model(vocab_size, embedding_size):
+def build_model(vocab_size, window_size, num_features):
     model = tf.keras.Sequential()
-    model.add(layers.Embedding(vocab_size, embedding_size))
-    model.add(layers.LSTM(512, return_sequences=True))
-    model.add(layers.LSTM(512, return_sequences=True))
+    model.add(layers.LSTM(256, return_sequences=True, input_shape=(window_size, num_features)))
+    model.add(layers.LSTM(256))
     model.add(layers.BatchNormalization())
-    model.add(layers.Dense(512, activation='relu'))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dropout(.3))
-    model.add(layers.Dense(256, activation='relu'))
+    model.add(layers.Dense(512, activation='relu'))#, kernel_initializer='truncated_normal'))
     model.add(layers.BatchNormalization())
     model.add(layers.Dropout(.3))
-    model.add(layers.Dense(vocab_size))
-    model.compile(loss='sparse_categorical_crossentropy', optimizer=optimizers.Adam(learning_rate=0.005))
+    model.add(layers.Dense(256, activation='relu'))#, kernel_initializer='truncated_normal'))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Dropout(.3))
+    model.add(layers.Dense(256, activation='relu'))#, kernel_initializer='truncated_normal'))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Dropout(.3))
+    model.add(layers.Dense(vocab_size, activation='softmax'))
+    model.compile(loss='sparse_categorical_crossentropy', optimizer=optimizers.Adam(learning_rate=0.002))
     
     return model
 
-def train(model, inputs, lables):
-    print("Training...")
-    filepath = "../../MusicBot-by-Producer-404/code/weights/weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
-    checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        filepath,
-        monitor='loss',
-        verbose=0,
-        save_best_only=True,
-        mode='min'
-    )
-    callbacks_list = [checkpoint]
 
-    model.fit(inputs, lables, epochs=50, batch_size=128, callbacks=callbacks_list)
+def train(model, inputs, lables, n_epoch):
+    print("Training...")
+    history = tf.keras.callbacks.History()
+    model.fit(inputs, lables, epochs=n_epoch, batch_size=128, callbacks=[history]) # , callbacks=callbacks_list)
+    
+    print(history.History)
     print("Training finished")
+    
+    # save weights for generate midi
+    model.save("my_weights.h5")
+
 
 def test(model, inputs, lables):
     print("\nTesting...")
-    model.evaluate(inputs, lables)
+    test_loss = model.evaluate(inputs, lables)
     print("Testing finished")
-
+    return test_loss
     
+
 def main():
-    train_data, test_data, notes_dict = get_data()
-    model = build_model(len(notes_dict), 128)
-    train(model, train_data[:-1], train_data[1:])
-    test(model, test_data[:-1], test_data[1:])
+    # read in data
+    train_inputs, train_labels, test_inputs, test_labels, notes_dict = get_data()
+    # build model
+    model = build_model(len(notes_dict), 10, 1)
+    model.summary()
+    # training
+    train(model, train_inputs, train_labels, 50)
+    # testing
+    test_loss = test(model, test_inputs, test_labels)
+    print('Test perplexity:{}'.format(test_loss))
+    
     
 if __name__ == '__main__':
     main()

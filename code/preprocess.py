@@ -18,19 +18,45 @@ def get_notes():
         print("Parsing %s" % file)
         
         # Only parse notes and chords in first track, which usually contains the main melody
-        notes_to_parse = midi.parts[0].flat.notes     
+        notes_to_parse = midi.parts[0].flat.notesAndRests     
 
         for element in notes_to_parse:
             if isinstance(element, note.Note):
                 notes.append(str(element.pitch))
             elif isinstance(element, chord.Chord):
                 notes.append('.'.join(str(n) for n in element.normalOrder))
+            elif isinstance(element, note.Rest):
+                notes.append('Rest')
+        
+        notes.append('STOP')
                 
     # prevent overfitting, need to do more research on this
     # with open('data/notes', 'wb') as filepath:
     #     music21.pickle.dump(notes, filepath)
 
     return notes
+
+
+# split a univariate sequence into samples
+def split_data(data, window_size, stop_id):
+    inputs, labels = [], []
+    i = 0
+    while i < (len(data) - window_size):
+        # find the end of this pattern
+        end_idx = i + window_size
+        # gather input and labels parts of the pattern
+        inputs.append(data[i:end_idx])
+        labels.append(data[end_idx])
+        
+        if data[end_idx] is stop_id:
+            i = end_idx + 1
+        else:
+            i += 1
+        
+    inputs = np.array(inputs)
+    inputs = inputs.reshape((inputs.shape[0], inputs.shape[1], 1))
+    return inputs, np.array(labels)
+
 
 def get_data():
     """
@@ -42,8 +68,8 @@ def get_data():
     :return: Tuple of train (1-d list with training notes in id form), 
              vocabulary (dict containg note->index mapping)
     """
-    test_fraction = 0.1
-    window_size = 20
+    test_fraction = 0.2
+    window_size = 10
     notes = get_notes()
     
     # mapping notes to ids
@@ -54,20 +80,23 @@ def get_data():
     data = []
     for note in notes:
         data.append(notes_dict[note])
+        
+    inputs, labels = split_data(data, window_size, notes_dict['STOP'])
     
-    test_len = int(len(data) * test_fraction)
-    train_data = data[:-test_len]
-    test_data = data[-test_len:]
+    random_ind = tf.random.shuffle([i for i in range(labels.shape[0])])
+    inputs = tf.gather(inputs, random_ind)
+    labels = tf.gather(labels, random_ind)
     
-    train_windows = int((len(train_data)-1)/window_size)
-    train_inputs = np.reshape(data[:train_windows*window_size], (-1,window_size))
-    train_labels = np.reshape(data[1:train_windows*window_size+1], (-1,window_size))
+    test_len = int(len(inputs) * test_fraction)
+    train_inputs = inputs[:-test_len]
+    train_labels = labels[:-test_len]
+    test_inputs = inputs[-test_len:]
+    test_labels = labels[-test_len:]
     
-    test_windows = int((len(test_data)-1)/window_size)
-    test_inputs = np.reshape(data[:test_windows*window_size], (-1,window_size))
-    test_labels = np.reshape(data[1:test_windows*window_size+1], (-1,window_size))
-    # print(len(data))
-    # print(len(train_data))
-    # print(len(test_data))
+    # normalize inputs
+    # train_inputs = train_inputs/len(notes_dict)
+    # test_inputs = test_inputs/len(notes_dict)
     
+    # print(train_inputs.shape)
+    # print(train_labels.shape)
     return train_inputs, train_labels, test_inputs, test_labels, notes_dict
