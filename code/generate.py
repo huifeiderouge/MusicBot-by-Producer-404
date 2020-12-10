@@ -4,7 +4,65 @@ from tensorflow.keras import Model
 from tensorflow.keras import layers
 from tensorflow.keras import optimizers
 from preprocess import get_data
-from music21 import instrument, note, stream, chord
+from music21 import instrument, note, stream, chord, converter
+
+
+def generate(notes_dict):
+    model = tf.keras.models.load_model("../../MusicBot-by-Producer-404/code/my_weights.h5")
+    predictions = predict(model, notes_dict, 10)
+    notes = prepare_sequence(predictions, notes_dict)
+    create_midi(notes)
+    
+def prepare_sequence(predictions, notes_dict):
+    id_to_notes = {v: k for k, v in notes_dict.items()}
+    notes_seq = [id_to_notes[i] for i in predictions]
+    return notes_seq
+    
+
+def get_start_notes(file_path, notes_dict):
+    midi = converter.parse(file_path)
+    notes_to_parse = midi.parts[0].flat.notesAndRests
+    notes = []
+    counter = 0
+    for element in notes_to_parse:
+        if isinstance(element, note.Note):
+            notes.append(str(element.pitch))
+            counter += 1
+        elif isinstance(element, chord.Chord):
+            notes.append('.'.join(str(n) for n in element.normalOrder))
+            counter += 1
+        elif isinstance(element, note.Rest):
+            notes.append('Rest')
+            counter += 1
+        
+        if counter >= 10:
+            break
+        
+    notes_id = []
+    notes_id = [notes_dict[k] for k in notes]
+    return notes_id
+    
+
+def predict(model, notes_dict, window_size):
+    start = get_start_notes("../../MusicBot-by-Producer-404/data/8.mid", notes_dict)
+    # start = np.random.randint(0, len(notes_dict), (window_size)))
+    prediction_out = start
+    
+    prediction_in = np.reshape(start, (1, window_size, 1))
+    
+    # generate 500 notes
+    for note_index in range(200):
+        # print("input:", prediction_in[0,:,0])
+        probs = model.predict_step(prediction_in)
+        prediction = np.random.choice(len(notes_dict), p=np.squeeze(probs))
+        # print("prediction:", prediction)
+        
+        prediction_out = np.append(prediction_out, prediction)
+        # print("output:", prediction_out)
+        prediction_in = np.reshape(prediction_out[-window_size:], (1, window_size, 1))
+       
+    return prediction_out
+
 
 def create_midi(prediction_output):
     """ convert the output from the prediction to notes and create a midi file
@@ -26,14 +84,18 @@ def create_midi(prediction_output):
             new_chord = chord.Chord(notes)
             new_chord.offset = offset
             output_notes.append(new_chord)
-        # pattern is a note
-        elif pattern != 'Rest':
-            new_note = note.Note(pattern)
+        # pattern is a STOP token
+        elif pattern == 'STOP':
+            break
+        # pattern is a rest
+        elif pattern == 'Rest':
+            new_note = note.Rest()
             new_note.offset = offset
             new_note.storedInstrument = instrument.Piano()
             output_notes.append(new_note)
+        # pattern is a note
         else:
-            new_note = note.Rest()
+            new_note = note.Note(pattern)
             new_note.offset = offset
             new_note.storedInstrument = instrument.Piano()
             output_notes.append(new_note)
@@ -44,7 +106,7 @@ def create_midi(prediction_output):
     midi_stream = stream.Stream(output_notes)
 
     midi_stream.write('midi', fp='../../MusicBot-by-Producer-404/test_output.mid')
-    return midi_stream
+    # return midi_stream
 
 
 
