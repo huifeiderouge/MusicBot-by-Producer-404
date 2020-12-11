@@ -108,5 +108,7 @@ def create_midi(prediction_output):
     midi_stream.write('midi', fp='../../MusicBot-by-Producer-404/test_output.mid')
     # return midi_stream
 
-
+if __name__ == '__main__':
+    _, _, _, _, notes_dict = get_data()
+    generate(notes_dict)
 
